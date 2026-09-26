@@ -165,7 +165,7 @@ def strings_only_in_quotes(docx, strings):
 
 
 def signature_placeholder_once(docx, expected):
-    """The signature placeholder appears exactly `expected` times (1 in the cover letter, 0 elsewhere)."""
+    """The signature placeholder appears exactly `expected` times (0 in every document: none is left)."""
     n = _plain(docx).lower().count(SIGNATURE)
     return [] if n == expected else [f"{Path(docx).name}: signature placeholder appears {n} times, expected {expected}"]
 
@@ -363,7 +363,7 @@ def check(root):
         problems += title_matches(docs[n], title) + not_stale(docs[n], md / SOURCES[n])
         problems += no_forbidden_metadata(docs[n], terms["metadata"]) + no_track_changes(docs[n])
         problems += strings_absent(docs[n], terms["process"])
-        problems += signature_placeholder_once(docs[n], 1 if n == COVER else 0)
+        problems += signature_placeholder_once(docs[n], 0)
         if n == RESPONSE:
             problems += strings_only_in_quotes(docs[n], REMOVED_TERMS)
         elif n != CHECKLIST:  # the checklist quotes the guidelines' own wording (RECORD 19.1: "misclassification bias")
