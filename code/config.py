@@ -2,11 +2,14 @@ from pathlib import Path
 
 DATA = Path("/path/to/mimic-iv-3.1")
 HOSP, ICU = DATA / "hosp", DATA / "icu"
+EICU_DATA = Path("/path/to/eicu-crd-2.0")   # eICU-CRD v2.0 (replication)
 PROJ = Path(".")
 INT = PROJ / "output" / "intermediate"
 TAB = PROJ / "output" / "tables"
 FIG = PROJ / "output" / "figures"
-for d in (INT, TAB, FIG):
+REV = PROJ / "output" / "revision"
+VENDOR = PROJ / "code" / "vendor" / "mimic_code"
+for d in (INT, TAB, FIG, REV):
     d.mkdir(parents=True, exist_ok=True)
 
 # --- chartevents itemids ---

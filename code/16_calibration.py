@@ -1,5 +1,5 @@
 """Calibration (slope + calibration-in-the-large intercept) for the Aim-3 handling-strategy
-mortality model, per strategy. Reviewer asked for calibration because the paper discusses risk
+mortality model, per strategy. Calibration is reported because the paper discusses risk
 shifts. Out-of-fold predictions, same model as 12_aim3."""
 import warnings, numpy as np, pandas as pd
 warnings.filterwarnings("ignore"); np.seterr(all="ignore")

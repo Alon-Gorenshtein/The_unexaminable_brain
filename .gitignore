@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.err
+*.log
+.DS_Store
+._*
+
+# data and outputs (never commit raw MIMIC / I-CARE data)
+output/
+*.csv
+*.csv.gz
+*.parquet
+*.npy
+*.npz

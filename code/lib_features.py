@@ -11,18 +11,34 @@ def parse_rass(s):
     return int(m.group()) if m else np.nan
 
 
-def build_exam_table(hours=72):
+def attach_rass(trip, rass, direction="nearest", tolerance="2h"):
+    """Attach one RASS value to each examination within its stay.
+
+    direction="nearest": the value charted closest in time within the tolerance, on either side (the analysis
+    as first submitted). direction="backward": the most recent value charted at or before the examination.
+    Adds `rass` and `rass_lag_h`, the hours from the RASS to the examination (negative when the RASS was
+    charted later); both are NaN when no value qualifies."""
+    rass = rass.dropna(subset=["rass"]).sort_values("charttime")
+    rass = rass[["stay_id", "charttime", "rass"]].assign(rass_time=lambda d: d["charttime"])
+    out = pd.merge_asof(trip.sort_values("charttime"), rass, on="charttime", by="stay_id",
+                        direction=direction, tolerance=pd.Timedelta(tolerance))
+    out["rass_lag_h"] = (out["charttime"] - out["rass_time"]).dt.total_seconds() / 3600
+    return out.drop(columns="rass_time")
+
+
+def build_exam_table(hours=72, chart_file="chart_neuro.parquet", rass_direction="nearest"):
     """Per-(stay, charttime) GCS exams within `hours` of ICU admission for neuro first stays,
-    with eye/motor scores, raw verbal, nearest RASS (+-2h), context flags, and age.
+    with eye/motor scores, raw verbal, RASS within 2 h (nearest or look-back per `rass_direction`), context flags, and age.
+    `chart_file` selects the staged chart table under output/intermediate.
     Returns one row per exam with columns:
       stay_id, charttime, hr, eye, motor, verbal_raw, verbal_score (NaN if non-assessable),
-      nonassess, rass, sed, nmb, vaso, vent, age, phenotype, y(hospital_expire_flag)
+      nonassess, rass, rass_lag_h, sed, nmb, vaso, vent, age, phenotype, y(hospital_expire_flag)
     """
     cohort = pd.read_parquet(INT / "cohort.parquet")
     cohort = cohort[cohort.first_stay]
     cohort = cohort[cohort.phenotype != "comparator"]
     icu = pd.read_csv(ICU / "icustays.csv.gz", usecols=["stay_id", "intime"], parse_dates=["intime"])
-    chart = pd.read_parquet(INT / "chart_neuro.parquet")
+    chart = pd.read_parquet(INT / chart_file)
     chart = chart[chart.stay_id.isin(cohort.stay_id)].merge(icu, on="stay_id")
     chart["hr"] = (chart["charttime"] - chart["intime"]).dt.total_seconds() / 3600
     chart = chart[(chart.hr >= 0) & (chart.hr <= hours)]
@@ -37,14 +53,9 @@ def build_exam_table(hours=72):
     trip["verbal_score"] = trip["verbal_raw"].map(VERBAL_SCORE)
     trip["nonassess"] = trip["verbal_raw"].eq("No Response-ETT")
 
-    # nearest RASS within +-2h via merge_asof per stay
     rass = chart[chart.itemid == IT["rass"]][["stay_id", "charttime", "value"]].copy()
     rass["rass"] = rass["value"].map(parse_rass)
-    rass = rass.dropna(subset=["rass"]).sort_values("charttime")
-    trip = trip.sort_values("charttime")
-    trip = pd.merge_asof(trip, rass[["stay_id", "charttime", "rass"]],
-                         on="charttime", by="stay_id", direction="nearest",
-                         tolerance=pd.Timedelta("2h"))
+    trip = attach_rass(trip, rass, rass_direction)
 
     # context flags at exam time (active infusion/vent interval)
     inf = pd.read_parquet(INT / "infusions.parquet")

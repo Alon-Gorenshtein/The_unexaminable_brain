@@ -1,6 +1,6 @@
 """Verify every manuscript reference against Crossref by DOI, emit AMA 11th-edition
 text + a Zotero-importable BibTeX file. (ama-citation-zotero skill discipline.)"""
-import json, urllib.request, urllib.parse, time, sys
+import json, os, urllib.request, urllib.parse, time, sys
 
 # (key, DOI, stated short description for the diff check)
 REFS = [
@@ -19,8 +19,15 @@ REFS = [
 
 
 def crossref(doi):
-    url = "https://api.crossref.org/works/" + urllib.parse.quote(doi) + "?mailto=alon3233@gmail.com"
-    req = urllib.request.Request(url, headers={"User-Agent": "ama-verify/1.0 (mailto:alon3233@gmail.com)"})
+    # Optional contact address for the Crossref polite pool, read from the environment.
+    # When CROSSREF_MAILTO is unset, no contact address is sent.
+    mailto = os.environ.get("CROSSREF_MAILTO", "").strip()
+    url = "https://api.crossref.org/works/" + urllib.parse.quote(doi)
+    agent = "ama-verify/1.0"
+    if mailto:
+        url += "?mailto=" + urllib.parse.quote(mailto)
+        agent += " (mailto:" + mailto + ")"
+    req = urllib.request.Request(url, headers={"User-Agent": agent})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.load(r)["message"]
 

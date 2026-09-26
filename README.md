@@ -1,10 +1,14 @@
-# Non-Assessable Verbal Glasgow Coma Scale Components in Acute Brain Injury: Frequency, Selection Bias, and Severity-Score Distortion in MIMIC-IV
+# Handling of the Non-Assessable Verbal Glasgow Coma Scale and Computed Illness Severity in Critically Ill Adults With Acute Brain Injury: A Retrospective Analysis
 
-Gorenshtein A, Adiniaev Y, Omar M, Barash Y, Klang E, Daniel O. BRIDGE GenAI Lab, Beth Israel Deaconess Medical Center, Boston, MA, USA.
+Gorenshtein A, Adiniaev Y, Omar M, Barash Y, Klang E, Daniel O. Department of Neurology and BRIDGE GenAI Lab, Beth Israel Deaconess Medical Center, Harvard Medical School, Boston, MA, USA. Corresponding author: Alon Gorenshtein, MD (agorensh@bidmc.harvard.edu).
 
-Background: The verbal component of the Glasgow Coma Scale (GCS) cannot be assessed in intubated patients, yet total GCS values are widely reused in electronic-health-record (EHR) studies and severity scores. How often the verbal component is non-assessable, and how its handling distorts severity scoring, is unknown.
+Repository: https://github.com/Alon-Gorenshtein/The_unexaminable_brain
 
-Conclusions: Non-assessable verbal examinations are common and informative, and the convention used to handle them distorts severity scores and mortality models; the MIMIC default-to-15 rule falsely normalizes the sickest patients. EHR studies should report how non-assessable verbal examinations are handled.
+Background: The Glasgow Coma Scale (GCS) contributes to illness-severity scores. The verbal component cannot be observed in intubated patients; the MIMIC Code Repository derivation assigns these examinations a total of 15.
+
+Objective: To quantify non-assessable verbal GCS examinations in adults with acute brain injury and describe how their handling changes computed severity, the analyzed population and mortality-model performance.
+
+Conclusion: In this cohort, how a non-assessable verbal GCS was handled changed computed severity and the analyzed population. Studies and benchmarks that use GCS-based severity should report the handling rule.
 
 ## Data
 
@@ -16,9 +20,10 @@ Raw data are **not** included in this repository and cannot be redistributed und
 
 ## Reproducing the analysis
 
-1. Use Python 3.9 or later. Install the scientific stack: `pandas numpy scipy scikit-learn statsmodels` (and `lifelines`, `torch` where the scripts require them).
-2. Point the data-path variable at the top of `code/config.py` to your local copy of MIMIC-IV.
-3. Run the scripts in `code/` in numeric order (`00_*`, `01_*`, ...). Intermediate and final outputs are written to `./output/`.
+1. Clone this repository: `git clone https://github.com/Alon-Gorenshtein/The_unexaminable_brain.git`
+2. Use Python 3.9 or later and install the packages listed in `code/README.md` (script 60 needs its own environment with `duckdb`, described there).
+3. Point the data-path variables at the top of `code/config.py` to your local copies of MIMIC-IV and eICU-CRD.
+4. Run the scripts in the order given in `code/README.md`, not in plain numeric order. Intermediate and final outputs are written to `./output/`.
 
 ## Repository contents
 
@@ -27,7 +32,7 @@ Raw data are **not** included in this repository and cannot be redistributed und
 
 ## Citation
 
-Gorenshtein A, Adiniaev Y, Omar M, Barash Y, Klang E, Daniel O. Non-Assessable Verbal Glasgow Coma Scale Components in Acute Brain Injury: Frequency, Selection Bias, and Severity-Score Distortion in MIMIC-IV. 2026.
+Gorenshtein A, Adiniaev Y, Omar M, Barash Y, Klang E, Daniel O. Handling of the Non-Assessable Verbal Glasgow Coma Scale and Computed Illness Severity in Critically Ill Adults With Acute Brain Injury: A Retrospective Analysis. 2026.
 
 ## License
 

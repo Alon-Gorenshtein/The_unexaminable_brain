@@ -1,7 +1,7 @@
-"""Aim 4 robustness analyses requested by peer review.
+"""Aim 4 robustness analyses.
 
-(1) Mechanical-ventilation ablation. The reviewer noted that `vent` is near-deterministic for
-    the non-assessable target and that the verbal model is trained on assessable exams (where
+(1) Mechanical-ventilation ablation. `vent` is near-deterministic for
+    the non-assessable target, and the verbal model is trained on assessable exams (where
     vent is rare) and applied to intubated exams (where vent is near-universal), risking
     circularity. We refit the verbal-recovery model WITHOUT `vent` and compare recovery and the
     downstream mortality model with the with-vent variant. -> eTable (ablation).

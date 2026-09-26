@@ -1,0 +1,4 @@
+# Document tools in code/tools/ that read or write .docx files and figures (pandoc is also needed on PATH).
+python-docx==1.2.0
+Pillow==11.3.0
+lxml==6.0.2
