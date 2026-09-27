@@ -30,3 +30,12 @@ def primary_dx_label(dx, hadm_ids):
         hit = lab.index.intersection(pd.Index(p.loc[m[ph], "hadm_id"].unique()))
         lab[hit] = ph
     return lab
+
+
+def hospital_los_days(df):
+    """Days from hospital admission to the latest of the recorded hospital discharge, death and ICU discharge
+    times. A few records (same-day deaths) carry a discharge time earlier than the admission time; taking the
+    latest of the three end times keeps such a stay positive without dropping it."""
+    ends = pd.concat([pd.to_datetime(df[c], errors="coerce") for c in ("dischtime", "deathtime", "outtime")],
+                     axis=1).max(axis=1)
+    return (ends - pd.to_datetime(df["admittime"], errors="coerce")).dt.total_seconds() / 86400
