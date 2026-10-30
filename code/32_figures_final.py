@@ -1,6 +1,7 @@
 """Journal-grade figures (scientific-figures skill standard): Helvetica, colorblind-safe,
 600 DPI PDF+PNG, no in-figure titles, panel labels, error bars."""
 import json
+import sys
 
 import matplotlib
 matplotlib.use("Agg")
@@ -57,6 +58,7 @@ def fig1():
     comp_verbal = int(comp.stay_id.isin(burden.loc[burden.phenotype == "comparator", "stay_id"]).sum())
     comp_no_verbal = len(comp) - comp_verbal
     CA = json.loads((REV / "cohort_accounting.json").read_text())
+    EV = pd.read_csv(REV / "excluded_vs_included.csv").set_index(["comparison", "group"]).mortality_pct
     assert len(neuro) == CA["neuro_first_stay_n"], "cohort.parquet and cohort_accounting.json disagree"
     n_repeat = len(cohort) - len(first)
     assert (cohort.age < 18).sum() == 0, "the cohort file holds minors: the exclusion note must name age"
@@ -90,9 +92,11 @@ def fig1():
                        f"Comparator analyzed\n(N = {ama(comp_verbal)})",
             ha="left", va="top", fontsize=8.5, color=MUTED)
     arr(2.85, 7.7, 2.85, 6.4)
-    note(3.05, 7.05, f"Excluded: no verbal GCS\ndocumented (n = {ama(CA['no_verbal_n'])})")
+    note(3.05, 7.05, f"Excluded: no verbal GCS\ndocumented (n = {ama(CA['no_verbal_n'])};\n"
+                     f"in-hospital mortality {EV['verbal_documented', 'excluded']:.1f}%)")
     box(0.3, 5.2, 5.1, 1.2, f"At least one charted GCS verbal entry\nAnalytic cohort (N = {ama(CA['with_verbal_n'])})", "#FDF0E8")
-    down(2.85, 5.2, 4.4, f"Excluded: no complete first-day\nexamination (n = {ama(CA['aim3_excluded_n'])})")
+    down(2.85, 5.2, 4.4, f"Excluded: no complete first-day\nexamination (n = {ama(CA['aim3_excluded_n'])};\n"
+                         f"in-hospital mortality {EV['audit_subset', 'excluded']:.1f}%)")
     box(0.3, 3.2, 5.1, 1.2, f"Audit subset: complete first-day\neye, motor and verbal\n(N = {ama(CA['aim3_n'])})", "#FDF0E8")
     save(fig, "fig1_flow")
 
@@ -212,5 +216,7 @@ def fig5():
     save(fig, "fig5_learned")
 
 
+# with figure names as arguments (e.g. `fig1`), only those figures are drawn
 for f in (fig1, fig2, fig3, fig4, fig5):
-    f(); print(f.__name__, "done")
+    if len(sys.argv) == 1 or f.__name__ in sys.argv[1:]:
+        f(); print(f.__name__, "done")

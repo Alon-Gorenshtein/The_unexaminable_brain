@@ -21,7 +21,7 @@ neuro["in_aim3_legacy"] = neuro.stay_id.isin(set(load_first_day(24, legacy=True)
 
 
 def summ(df):
-    return {"n": len(df), "age_median": df.age.median(), "age_q1": df.age.quantile(.25),
+    return {"n": len(df), "deaths": int(df.hospital_expire_flag.sum()), "age_median": df.age.median(), "age_q1": df.age.quantile(.25),
             "age_q3": df.age.quantile(.75), "female_pct": 100 * (df.gender == "F").mean(),
             "ventilated_pct": 100 * df.vent.mean(), "mortality_pct": 100 * df.hospital_expire_flag.mean(),
             "icu_los_median_days": df.los.median()}
@@ -52,6 +52,24 @@ out.update(aim3_excl_first_verbal_after24h_n=int((lost.hr_first_verbal > 24).sum
            aim3_excl_verbal_le24h_no_triple_n=int((lost.hr_first_verbal <= 24).sum()),
            aim3_excl_died_le24h_n=int(lost.died_24h.sum()),
            aim3_excl_official_gcs_available_n=int(lost.stay_id.map(off).notna().sum()))
+
+# stays outside the analyses (no verbal entry; no complete first-day examination): bounds on the headline estimates
+aud = json.loads((REV / "audit.json").read_text())
+no_verbal = neuro[~neuro.has_verbal]
+out.update(no_verbal_deaths_n=int(no_verbal.hospital_expire_flag.sum()),
+           aim3_excl_deaths_n=int(lost.hospital_expire_flag.sum()),
+           outside_n=int(len(no_verbal) + len(lost)))
+out["outside_deaths_n"] = out["no_verbal_deaths_n"] + out["aim3_excl_deaths_n"]
+out["eligible_deaths_n"] = aud["sel_deaths_total"] + out["outside_deaths_n"]
+out["outside_deaths_pct"] = float(100 * out["outside_deaths_n"] / out["eligible_deaths_n"])
+nb = burden[(burden.phenotype != "comparator") & burden.stay_id.isin(neuro.stay_id)]
+out["ever_nonassess_n"] = int(nb.ever_nonassess.sum())
+# the 42 stays without a verbal entry counted as none, or all, non-assessable
+out["burden_bound_lo_pct"] = float(100 * out["ever_nonassess_n"] / len(neuro))
+out["burden_bound_hi_pct"] = float(100 * (out["ever_nonassess_n"] + out["no_verbal_n"]) / len(neuro))
+# complete-case handling would also exclude every outside stay, since none has a complete first-day examination
+out["cc_pct_deaths_excluded_with_outside"] = float(100 * (aud["sel_deaths_excluded"] + out["outside_deaths_n"])
+                                                   / (aud["sel_deaths_total"] + out["outside_deaths_n"]))
 
 # ---- diagnostic overlap ----
 dx = pd.read_csv(HOSP / "diagnoses_icd.csv.gz", usecols=["hadm_id", "seq_num", "icd_code", "icd_version"],

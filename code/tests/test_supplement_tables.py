@@ -265,3 +265,13 @@ def test_etable18_claims_point_at_the_row_they_register(supp):
         assert kind == "dec2"
         seen.add((m.group(1), m.group(2)))
     assert seen == {(str(i), k) for i in range(5) for k in ("OR", "lo", "hi")}
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md", "output/revision/excluded_vs_included.csv")
+def test_etable3_reports_deaths(gen, supp):
+    body = supp.split("<!-- BEGIN eTable 3 -->")[1].split("<!-- END eTable 3 -->")[0]
+    rows = [[c.strip() for c in l.strip().strip("|").split("|")] for l in body.splitlines() if l.startswith("|")]
+    header, data = rows[0], rows[2:]
+    assert header[header.index("Stays, n") + 1] == "Deaths, n"
+    e = pd.read_csv(PROJ / "output" / "revision" / "excluded_vs_included.csv")
+    assert [r[3] for r in data] == [gen.n_(d) for d in e.deaths]

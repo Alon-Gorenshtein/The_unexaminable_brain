@@ -139,9 +139,9 @@ def test_real_response_table_quote_breaks_when_a_cell_changes():
     if not resp.exists():
         pytest.skip("no response yet")
     text = resp.read_text(encoding="utf-8")
-    row = "| Default-to-15 | 0.744 (0.734 to 0.755) | 0.135 | 13.76 | 1.23 |"
+    row = "| Verbal GCS documentation | Not documented (excluded) | 42 | 26 | 75 (63 to 83) | 50.0 | 19.0 | 61.9 | 0.2 |"
     assert row in text
     rev = [(ROOT / "manuscript" / f).read_text(encoding="utf-8") for f in ("manuscript.md", "supplement.md")]
-    bad = text.replace(row, row.replace("13.76", "13.67"))
+    bad = text.replace(row, row.replace("61.9", "61.8"))
     fails = crq.check(bad, [], rev)[1]
-    assert any("13.67" in f for f in fails)
+    assert any("61.8" in f for f in fails)

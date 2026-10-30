@@ -4,9 +4,9 @@ Gorenshtein A, Adiniaev Y, Omar M, Barash Y, Klang E, Daniel O. Department of Ne
 
 Repository: https://github.com/Alon-Gorenshtein/The_unexaminable_brain
 
-Background: The Glasgow Coma Scale (GCS) contributes to illness-severity scores. The verbal component cannot be observed in intubated patients; the MIMIC Code Repository derivation assigns them a total of 15.
+Background: The Glasgow Coma Scale (GCS) contributes to illness-severity scores. The verbal component cannot be observed in intubated patients; the MIMIC Code Repository sets "No Response-ETT" rows to a total of 15.
 
-Objective: To quantify non-assessable verbal GCS examinations in adults with acute brain injury and describe how their handling changes computed severity, the analyzed population and mortality-model performance.
+Objective: To quantify non-assessable verbal GCS examinations and describe how their handling changes computed severity, the analyzed population and mortality-model performance.
 
 Conclusion: In this cohort, how a non-assessable verbal GCS was handled changed computed severity and the analyzed population. Studies and benchmarks that use GCS-based severity should report the handling rule.
 

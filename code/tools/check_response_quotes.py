@@ -21,7 +21,7 @@ every quoted body row, compared cell by cell after normalisation.
 Inside a paragraph, "..." or the ellipsis character separates fragments of one source paragraph. Each
 fragment must occur in the source after normalisation:
 - Original: `git show TAG:manuscript/manuscript.md` or `git show TAG:manuscript/supplement.md`
-  (either file; TAG defaults to jicm-v1, the submitted version);
+  (either file; TAG defaults to jicm-r1, the version this response answers);
 - Revised: the working-tree manuscript/manuscript.md or manuscript/supplement.md (either file).
 
 Normalisation, applied to the quotation and to the source alike: `^n^` citation superscripts are
@@ -201,7 +201,7 @@ def _git_show(ref, path, root):
 def main(argv=None, root=ROOT):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--response", default="manuscript/response_to_reviewers.md")
-    ap.add_argument("--ref", default="jicm-v1", help="git ref of the submitted version")
+    ap.add_argument("--ref", default="jicm-r1", help="git ref of the version this response answers")
     a = ap.parse_args(argv)
     try:
         response = (root / a.response).read_text(encoding="utf-8")

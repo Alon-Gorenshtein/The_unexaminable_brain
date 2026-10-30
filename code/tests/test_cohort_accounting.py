@@ -48,3 +48,55 @@ def test_accounting_adds_up_and_matches_submitted_burden():
     t2 = pd.read_csv(TAB.parent / "v1_submitted" / "table2_burden.csv").set_index("phenotype").pct_ever_nonassess
     for ph in NEURO:
         assert abs(prim[ph] - t2[ph]) < 0.06
+
+
+OUTSIDE_FILES = ("output/revision/cohort_accounting.json", "output/revision/audit.json",
+                 "output/revision/excluded_vs_included.csv", "output/revision/revision_digest.json")
+
+
+@pytest.fixture
+def ca():
+    return json.loads((REV / "cohort_accounting.json").read_text())
+
+
+@pytest.fixture
+def audit():
+    return json.loads((REV / "audit.json").read_text())
+
+
+@pytest.fixture
+def evi():
+    return pd.read_csv(REV / "excluded_vs_included.csv")
+
+
+@pytest.fixture
+def frozen_aim12():
+    return json.loads((REV / "revision_digest.json").read_text())["frozen_aim12"]
+
+
+@pytest.mark.requires_study_files(*OUTSIDE_FILES)
+def test_outside_stays_add_up(ca, audit):
+    assert ca["outside_n"] == ca["no_verbal_n"] + ca["aim3_excluded_n"] == 80
+    assert ca["outside_deaths_n"] == ca["no_verbal_deaths_n"] + ca["aim3_excl_deaths_n"]
+    assert ca["eligible_deaths_n"] == audit["sel_deaths_total"] + ca["outside_deaths_n"]
+    assert ca["outside_deaths_pct"] == pytest.approx(100 * ca["outside_deaths_n"] / ca["eligible_deaths_n"])
+
+
+@pytest.mark.requires_study_files(*OUTSIDE_FILES)
+def test_deaths_column_matches_mortality(evi):
+    assert (evi.deaths == (evi.n * evi.mortality_pct / 100).round().astype(int)).all()
+    assert evi.set_index(["comparison", "group"]).loc[("audit_subset", "included"), "deaths"] == 2702
+
+
+@pytest.mark.requires_study_files(*OUTSIDE_FILES)
+def test_burden_bounds(ca, frozen_aim12):
+    assert round(100 * ca["ever_nonassess_n"] / ca["with_verbal_n"], 1) == round(frozen_aim12["aim1.overall_pct_ever_nonassess"], 1)
+    assert ca["burden_bound_lo_pct"] == pytest.approx(100 * ca["ever_nonassess_n"] / ca["neuro_first_stay_n"])
+    assert ca["burden_bound_hi_pct"] == pytest.approx(100 * (ca["ever_nonassess_n"] + ca["no_verbal_n"]) / ca["neuro_first_stay_n"])
+
+
+@pytest.mark.requires_study_files(*OUTSIDE_FILES)
+def test_complete_case_share_with_outside_stays(ca, audit):
+    v = 100 * (audit["sel_deaths_excluded"] + ca["outside_deaths_n"]) / (audit["sel_deaths_total"] + ca["outside_deaths_n"])
+    assert ca["cc_pct_deaths_excluded_with_outside"] == pytest.approx(v)
+    assert ca["cc_pct_deaths_excluded_with_outside"] > audit["sel_pct_deaths_excluded"]

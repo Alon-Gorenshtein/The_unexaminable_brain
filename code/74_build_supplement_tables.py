@@ -161,15 +161,15 @@ def t_excluded():
     rows = []
     for key, (comp, grp) in lab.items():
         r = e.loc[key]
-        rows.append([comp, grp, n_(r.n), f"{r.age_median:.0f} ({r.age_q1:.0f} to {r.age_q3:.0f})", p1(r.female_pct),
+        rows.append([comp, grp, n_(r.n), n_(r.deaths), f"{r.age_median:.0f} ({r.age_q1:.0f} to {r.age_q3:.0f})", p1(r.female_pct),
                      p1(r.ventilated_pct), p1(r.mortality_pct), p1(r.icu_los_median_days)])
     return block(
         "**eTable 3. Characteristics of stays excluded for no verbal GCS documentation and of stays outside the "
         "audit subset, with the stays retained.** Stays are the first ICU stay of each hospitalization with an acute "
         "brain-injury code. The second comparison is within the analytic cohort. IQR, interquartile range; LOS, "
-        "length of stay.",
-        table(["Comparison", "Group", "Stays, n", "Age, median (IQR), y", "Female, %", "Mechanically ventilated, %",
-               "In-hospital mortality, %", "ICU LOS, median, d"], rows, ["---", "---"] + ["---:"] * 6))
+        "length of stay; ventilated, mechanically ventilated; mortality, in-hospital mortality.",
+        table(["Comparison", "Group", "Stays, n", "Deaths, n", "Age, median (IQR), y", "Female, %", "Ventilated, %",
+               "Mortality, %", "ICU LOS, median, d"], rows, ["---", "---"] + ["---:"] * 7))
 
 
 def t_values():
