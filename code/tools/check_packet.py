@@ -33,7 +33,10 @@ CLAIM_FILES = {"manuscript/manuscript.md": CLEAN, "manuscript/supplement.md": SU
                "manuscript/response_to_reviewers.md": RESPONSE, "manuscript/cover_letter_revision.md": COVER}
 # Wording the revision removed. The response quotes the reviewer and the submitted text, so there
 # these may appear inside block quotes only.
-REMOVED_TERMS = ["misclassif", "general property", "true GCS", "legacy"]
+REMOVED_TERMS = ["misclassif", "general property", "true GCS", "legacy",
+                 "does not favor", "cannot favor", "same mortality model", "into the same model",
+                 "reproduces every table", "reproduce the overall mortality", "cannot distinguish",
+                 "reproduce that cohort's overall mortality"]
 TERMS_FILE = ROOT / "docs" / "revision" / "packet_terms.tsv"
 SIGNATURE = "[signature"
 DECLARATION_HEADINGS = ["Acknowledgments", "Author Contributions", "Statements and Declarations",
@@ -141,11 +144,17 @@ def not_stale(docx, md):
     return [] if Path(docx).stat().st_mtime >= Path(md).stat().st_mtime else [f"{docx} is older than {md}"]
 
 
+def _straight(text):
+    """Typeset apostrophes (U+2019, U+2018) as straight ones, so a term written with ' also matches a built document."""
+    return text.replace("\u2019", "'").replace("\u2018", "'")
+
+
 def strings_absent(docx, strings, ignore_case=False):
-    t = _plain(docx).replace("\n", " ")
+    t = _straight(_plain(docx).replace("\n", " "))
     if ignore_case:
-        return [f"{Path(docx).name}: forbidden string present: {s!r}" for s in strings if s.lower() in t.lower()]
-    return [f"{Path(docx).name}: forbidden string present: {s!r}" for s in strings if s in t]
+        return [f"{Path(docx).name}: forbidden string present: {s!r}" for s in strings
+                if _straight(s).lower() in t.lower()]
+    return [f"{Path(docx).name}: forbidden string present: {s!r}" for s in strings if _straight(s) in t]
 
 
 def strings_present(docx, strings):
@@ -159,8 +168,9 @@ def strings_only_in_quotes(docx, strings):
     for style, text, _ in _body_paragraphs(docx):
         if style == "Block Text":
             continue
-        low = text.lower()
-        bad += [f"{Path(docx).name}: {s!r} outside a block quote: {text[:80]!r}" for s in strings if s.lower() in low]
+        low = _straight(text).lower()
+        bad += [f"{Path(docx).name}: {s!r} outside a block quote: {text[:80]!r}" for s in strings
+                if _straight(s).lower() in low]
     return bad
 
 
@@ -212,6 +222,12 @@ def frontmatter_wordcount_matches(docx):
         return [f"{Path(docx).name}: no 'Word count:' line in the front matter"]
     stated, measured = int(m.group(1).replace(",", "")), strict_count(str(docx))
     return [] if stated == measured else [f"{Path(docx).name}: front matter says {stated} words, strict count is {measured}"]
+
+
+def table_widths_set(docx):
+    """The main-text tables whose words the shared width filter breaks carry the column widths of set_table_widths."""
+    from set_table_widths import check
+    return check(Path(docx))
 
 
 def no_forbidden_metadata(docx, patterns=()):
@@ -372,6 +388,7 @@ def check(root):
         problems += has_no_embedded_figures(f)
         problems += frontmatter_wordcount_matches(f)
         problems += abstract_within_limit(f) + declarations_present(f)
+        problems += table_widths_set(f)
     if colored_run_count(clean):
         problems.append("clean manuscript contains colored runs")
     if not colored_run_count(ms):

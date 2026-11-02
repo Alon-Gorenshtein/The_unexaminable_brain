@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 
-from config import phenotype_masks
+from config import PHENOTYPE_PRIORITY, phenotype_masks, specific_phenotype_masks
 
 NEURO = ["SAH", "ICH", "SDH", "TBI", "AIS", "anoxic"]
 
 
-def phenotype_flags(dx, hadm_ids):
+def phenotype_flags(dx, hadm_ids, masks=phenotype_masks):
     flags = pd.DataFrame(False, index=pd.Index(hadm_ids, name="hadm_id"), columns=NEURO)
-    m = phenotype_masks(dx)
+    m = masks(dx)
     for ph in NEURO:
         hit = flags.index.intersection(pd.Index(dx.loc[m[ph], "hadm_id"].unique()))
         flags.loc[hit, ph] = True
@@ -20,6 +20,11 @@ def assign_hier(flags, low_to_high):
     for ph in low_to_high:
         lab[flags[ph]] = ph
     return lab
+
+
+def specific_labels(dx, hadm_ids):
+    """The hierarchy on the specific codes only: the label per admission, NaN when no specific code is present."""
+    return assign_hier(phenotype_flags(dx, hadm_ids, specific_phenotype_masks), PHENOTYPE_PRIORITY)
 
 
 def primary_dx_label(dx, hadm_ids):

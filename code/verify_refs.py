@@ -11,7 +11,7 @@ REFS = [
     ("brennan2020", "10.3171/2020.6.JNS20992", "Brennan missing verbal GCS J Neurosurg 2020"),
     ("zhang2025", "10.1111/jocn.17729", "Zhang etGCS MIMIC J Clin Nurs 2025"),
     ("sterne2009", "10.1136/bmj.b2393", "Sterne multiple imputation BMJ 2009"),
-    ("collins2015", "10.7326/M14-0697", "Collins TRIPOD Ann Intern Med 2015"),
+    ("collins2024", "10.1136/bmj-2023-078378", "Collins TRIPOD+AI BMJ 2024"),
     ("johnson2023", "10.1038/s41597-022-01899-x", "Johnson MIMIC-IV Sci Data 2023"),
     ("vonelm2007", "10.1016/S0140-6736(07)61602-X", "von Elm STROBE Lancet 2007"),
     ("benchimol2015", "10.1371/journal.pmed.1001885", "Benchimol RECORD PLoS Med 2015"),

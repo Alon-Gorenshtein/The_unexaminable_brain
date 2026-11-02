@@ -57,6 +57,7 @@ python3 code/65_aim4_revision.py
 python3 code/66_selection_model.py
 python3 code/67_cluster_sensitivity.py
 python3 code/76_mortality_cv_by_patient.py
+python3 code/77_definition_sensitivity.py
 python3 code/68_time_to_first_na.py
 python3 code/69_motor_only.py
 python3 code/70_eicu_probe.py
@@ -72,9 +73,11 @@ python3 code/72_revision_digest.py
 the frozen first-submission digests in `output/v1_submitted/` when that folder is present; it is not part of this
 copy.
 
-`76_mortality_cv_by_patient.py` reads the outputs of 04, 60 and 62 and must run before 72. After 72,
-`python3 code/tools/verify_headline_counts.py` checks that the counts the paper is built on equal the
-regenerated digest.
+`76_mortality_cv_by_patient.py` reads the outputs of 04, 60 and 62 and must run before 72.
+
+`77_definition_sensitivity.py` reads the outputs of 04, 60 and 62, checks its primary column against those of 61, 63
+and 64, and must run before 72. After 72, `python3 code/tools/verify_headline_counts.py` checks that the counts the
+paper is built on equal the regenerated digest.
 
 ## What needs the study repository
 

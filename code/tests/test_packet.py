@@ -106,6 +106,36 @@ def test_strings_only_in_quotes(tmp_path):
     assert not C.strings_only_in_quotes(good, ["misclassif"]) and C.strings_only_in_quotes(bad, ["misclassif"])
 
 
+def test_stale_wording_flagged_outside_quotes(tmp_path):
+    from docx.enum.style import WD_STYLE_TYPE
+    sentence = "The exclusion does not favor any of them."
+    bad, good = tmp_path / "b.docx", tmp_path / "g.docx"
+    d = Document()
+    d.add_paragraph(sentence)
+    d.save(bad)
+    d = Document()
+    d.styles.add_style("Block Text", WD_STYLE_TYPE.PARAGRAPH)
+    d.add_paragraph("The reviewer wrote the following.")
+    d.add_paragraph(sentence, style="Block Text")
+    d.save(good)
+    assert C.strings_only_in_quotes(bad, C.REMOVED_TERMS)
+    assert not C.strings_only_in_quotes(good, C.REMOVED_TERMS)
+    for term in ("does not favor", "cannot favor", "same mortality model", "into the same model",
+                 "reproduces every table", "reproduce the overall mortality", "cannot distinguish",
+                 "reproduce that cohort's overall mortality"):
+        assert term in C.REMOVED_TERMS
+
+
+def test_stale_wording_with_apostrophe_is_flagged_in_a_typeset_document(tmp_path):
+    """pandoc typesets an apostrophe as U+2019; a term written with a straight apostrophe must still match."""
+    bad = tmp_path / "b.docx"
+    d = Document()
+    d.add_paragraph("Predictions reproduce that cohort\u2019s overall mortality with little overfitting.")
+    d.save(bad)
+    assert C.strings_only_in_quotes(bad, C.REMOVED_TERMS)
+    assert C.strings_absent(bad, C.REMOVED_TERMS, ignore_case=True)
+
+
 def test_signature_placeholder(tmp_path):
     p, q = tmp_path / "p.docx", tmp_path / "q.docx"
     _doc(p, "[Signature and typed name to be added by the corresponding author]")

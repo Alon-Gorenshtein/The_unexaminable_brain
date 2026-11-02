@@ -275,3 +275,204 @@ def test_etable3_reports_deaths(gen, supp):
     assert header[header.index("Stays, n") + 1] == "Deaths, n"
     e = pd.read_csv(PROJ / "output" / "revision" / "excluded_vs_included.csv")
     assert [r[3] for r in data] == [gen.n_(d) for d in e.deaths]
+
+
+# ---- definition sensitivity: eTable 1 note, eTable 2 panel C, eTable 12 panel C, eTable 7 label ------------
+def _definition_sensitivity():
+    import json
+    from config import REV
+    return json.loads((REV / "definition_sensitivity.json").read_text(encoding="utf-8"))
+
+
+def _panel(block, start, stop=None):
+    """The text of `block` from the line that starts with `start` to the line that starts with `stop` (or the end)."""
+    lines = block.splitlines()
+    i = next(k for k, l in enumerate(lines) if l.startswith(start))
+    j = next((k for k in range(i + 1, len(lines)) if stop and lines[k].startswith(stop)), len(lines))
+    return "\n".join(lines[i:j])
+
+
+def _rows(text):
+    """(header, {first cell: remaining cells}) of the first markdown table in `text`."""
+    t = [[c.strip() for c in l.strip().strip("|").split("|")] for l in text.splitlines() if l.startswith("|")]
+    return t[0], {r[0]: r[1:] for r in t[2:]}, [r[0] for r in t[2:]]
+
+
+PANEL_C_ETABLE2 = "Panel C. Main estimates with the primary codes and with codes specific to the labeled injury (eTable 1)."
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md", "output/revision/definition_sensitivity.json")
+def test_panel_c_values_match_definition_sensitivity(gen, supp):
+    d = _definition_sensitivity()
+    b = gen.blocks(supp)[2]
+    header, rows, order = _rows(_panel(b, PANEL_C_ETABLE2))
+    assert header == ["Estimate", "Primary codes", "Specific codes"]
+
+    def ever(ph):
+        return lambda col: f"{gen.n_(d[f'{col}_ever_{ph}_n'])} / {gen.p1(d[f'{col}_ever_{ph}_pct'])}"
+
+    strat = {"official": "official first-day GCS", "reconstructed": "default-to-15", "impute1": "verbal imputed as 1",
+             "gcs_t": "eye-plus-motor sum (T)", "brennan": "Brennan estimate"}
+    want = [("Stays with a verbal entry, n / ever non-assessable, %",
+             lambda c: f"{gen.n_(d[f'{c}_analytic_n'])} / {gen.p1(d[f'{c}_ever_pct'])}")]
+    want += [(f"{lab}, n / ever non-assessable, %", ever(k)) for k, lab in gen.PHENO]
+    want += [(f"{lab}, ventilated stays, median % of verbal examinations non-assessable",
+              (lambda k: lambda c: gen.p1(d[f"{c}_vent_frac_{k}_pct"]))(k)) for k, lab in gen.PHENO]
+    want += [("Anoxic, in-hospital mortality, %", lambda c: gen.p1(d[f"{c}_mortality_anoxic_pct"])),
+             ("Anoxic, ventilated, %", lambda c: gen.p1(d[f"{c}_vent_anoxic_pct"])),
+             ("Stays with an official first-day GCS, n / total of 15, %",
+              lambda c: f"{gen.n_(d[f'{c}_official_n'])} / {gen.p1(d[f'{c}_official_15_pct'])}"),
+             ("Official first-day GCS of 15 assigned by the default rule, n / eye-plus-motor sum below 10, %",
+              lambda c: f"{gen.n_(d[f'{c}_default_15_n'])} / {gen.p1(d[f'{c}_default_15_impossible_pct'])}"),
+             ("Audit stays, n", lambda c: gen.n_(d[f"{c}_audit_n"])),
+             ("Deaths among audit stays, n", lambda c: gen.n_(d[f"{c}_audit_deaths"])),
+             ("Non-assessable selected examinations, n", lambda c: gen.n_(d[f"{c}_nonassess_n"])),
+             ("Deaths excluded by complete-case handling, %", lambda c: gen.p1(d[f"{c}_cc_pct_deaths_excluded"]))]
+    want += [(f"AUROC, {lab}", (lambda s: lambda c: gen.a3(d[f"{c}_auroc_{s}"]))(s)) for s, lab in strat.items()]
+    want += [("Paired AUROC difference, Brennan estimate minus official first-day GCS (95% CI)",
+              lambda c: f"{gen.a3(d[f'{c}_diff_mean'])} ({gen.a3(d[f'{c}_diff_lo'])} to {gen.a3(d[f'{c}_diff_hi'])})"),
+             ("Observed-to-expected ratio, non-assessable selected examinations, official first-day GCS",
+              lambda c: gen.d2(d[f"{c}_oe_nonassess_official"])),
+             ("Observed-to-expected ratio, non-assessable selected examinations, Brennan estimate",
+              lambda c: gen.d2(d[f"{c}_oe_nonassess_brennan"]))]
+    assert order == [lab for lab, _ in want]
+    for lab, f in want:
+        assert rows[lab] == [f("primary"), f("specific")], lab
+    # the headline figures that the manuscript quotes
+    assert rows["Anoxic, n / ever non-assessable, %"] == ["1282 / 66.1", "719 / 91.8"]
+    assert rows["Stays with a verbal entry, n / ever non-assessable, %"] == ["14,230 / 45.2", "12,628 / 45.1"]
+    # lower case after the comma, except for a name
+    for lab in order:
+        head, _, tail = lab.partition(", ")
+        assert not tail[:1].isupper() or tail.startswith("Brennan"), lab
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md", "output/revision/definition_sensitivity.json")
+def test_etable2_panel_c_note_carries_the_removed_stays_and_the_comparator(gen, supp):
+    d = _definition_sensitivity()
+    note = _panel(gen.blocks(supp)[2], PANEL_C_ETABLE2).split("\n\n")[-1]
+    assert (f"Of the {gen.n_(d['primary_eligible_n'])} eligible stays, {gen.n_(d['removed_n'])} "
+            f"({gen.p1(d['removed_pct'])}%) entered only through non-specific codes "
+            f"({gen.n_(d['removed_TBI_n'])} traumatic, {gen.n_(d['removed_AIS_n'])} ischemic, "
+            f"{gen.n_(d['removed_anoxic_n'])} anoxic, {gen.n_(d['removed_SDH_n'])} subdural; in-hospital mortality "
+            f"{gen.p1(d['removed_mortality_pct'])}%), leaving {gen.n_(d['specific_eligible_n'])}. Of the removed stays, "
+            f"{gen.n_(d['removed_icd9_n'])} were coded in ICD-9 and {gen.n_(d['removed_icd10_n'])} in ICD-10 "
+            f"({gen.p1(d['removed_icd9_pct'])}% and {gen.p1(d['removed_icd10_pct'])}% of all stays coded in that "
+            "version).") in note
+    assert "Eligible stays:" not in note and "with the primary codes and" not in note
+    assert note.endswith(" AUROC, area under the receiver operating characteristic curve; GCS, Glasgow Coma Scale.")
+    assert ("Stays that entered only through non-specific codes were removed from the cohort and not added to the "
+            f"comparator; adding them moves the comparator's {gen.p1(d['comparator_ever_pct'])}% to "
+            f"{gen.p1(d['comparator_ever_moved_pct'])}%. Other stays were relabeled by the hierarchy applied to their "
+            "remaining codes.") in note
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md", "output/revision/definition_sensitivity.json")
+def test_etable12_panel_c_present(gen, supp):
+    d = _definition_sensitivity()
+    b = gen.blocks(supp)[12]
+    assert b.strip().startswith("**eTable 12. Sensitivity analyses of resampling, cross-validation folds and "
+                                "treatment-covariate timing.**")
+    cap = "Panel C. Treatment covariates recorded at any time during the ICU stay or by 24 hours after ICU admission"
+    text = _panel(b, cap)
+    assert text.splitlines()[0] == cap
+    header, rows, order = _rows(text)
+    assert header == ["Strategy", "AUROC, any time during the stay", "AUROC, first 24 hours",
+                      "Difference, first 24 hours minus any time"]
+    slugs = ["official", "reconstructed", "impute1", "gcs_t", "brennan"]
+    labels = ["Official first-day GCS", "Default-to-15", "Verbal imputed as 1", "Eye-plus-motor sum (T)",
+              "Brennan estimate"]
+    assert len(order) == 6
+    for s, lab in zip(slugs, labels):
+        a, f = d[f"primary_auroc_{s}"], d[f"firstday_auroc_{s}"]
+        assert rows[lab] == [gen.a3(a), gen.a3(f), gen.d4(f - a)], lab
+    last = "AUROC difference, Brennan estimate minus official first-day GCS"
+    assert order[-1] == last
+    assert rows[last] == [gen.a3(d["primary_diff_mean"]), gen.a3(d["firstday_diff_mean"]),
+                          gen.d4(d["firstday_diff_mean"] - d["primary_diff_mean"])]
+    note = text.split("\n\n")[-1]
+    assert (f"A vasopressor infusion was recorded in {gen.p1(d['stay_vaso_pct'])}% of stays at any time and "
+            f"{gen.p1(d['firstday_vaso_pct'])}% in the first 24 hours; mechanical ventilation in "
+            f"{gen.p1(d['stay_vent_pct'])}% and {gen.p1(d['firstday_vent_pct'])}%. An exposure counts in the first 24 "
+            "hours when it started no later than 24 hours after ICU admission, including one started before "
+            "admission.") in note
+    assert (f"{gen.a3(d['firstday_diff_mean'])} ({gen.a3(d['firstday_diff_lo'])} to "
+            f"{gen.a3(d['firstday_diff_hi'])})") in note
+    assert note.endswith("Exposures in the first 24 hours can still follow the selected examination: the earliest "
+                         f"exposure started after it in {gen.p1(d['firstday_vaso_after_exam_pct'])}% of stays with a "
+                         f"first-day vasopressor infusion and {gen.p1(d['firstday_vent_after_exam_pct'])}% of stays "
+                         "with first-day ventilation.")
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md")
+def test_etable1_note_names_every_nonspecific_code(gen, supp):
+    b = gen.blocks(supp)[1]
+    note = b.split("\n\n")[-1]
+    assert not note.startswith("|")
+    for code in ("348.5", "G93.82", "433.x0", "434.x0", "ICD-9 802", "ICD-9 800, 801, 803 and 804 with a fourth digit "
+                 "of 0 or 5", "432.0", "432.9", "I62.1", "I62.9", "G93.6", "I65 and I66", "S02", "348.82"):
+        assert code in note, code
+    for code in ("348.1", "G93.1", "433.x1", "434.x1", "I63", "ICD-9 850 to 854, ICD-9 800, 801, 803 and 804 with any "
+                 "other fourth digit, and ICD-10 S06", "432.1", "I62.0"):
+        assert code in note, code
+    assert "without mention of infarction" in note and "without infarction)" in note
+    assert ("denote skull fractures (for 804, fractures of the skull or face with other bones) without mention of "
+            "intracranial injury") in note
+    assert "The ICD-9 and ICD-10 lists are not exact counterparts:" in note
+    assert "eTable 2, panel C repeats the main estimates with the specific codes only" in note
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md")
+def test_etable2_title_and_etable18_caption(gen, supp):
+    assert gen.blocks(supp)[2].strip().startswith(
+        "**eTable 2. Diagnostic overlap among the acute brain-injury phenotypes and results under alternative "
+        "phenotype-assignment rules and code definitions.**")
+    cap = gen.blocks(supp)[18].split("\n\n")[0]
+    assert cap.endswith(" Phenotype labels use the primary code definition (eTable 1); eTable 2, panel C gives the "
+                        "percentages with specific codes.")
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md")
+def test_etable7_uses_mean_score_entered(gen, supp):
+    b = gen.blocks(supp)[7]
+    header = next(l for l in b.splitlines() if l.startswith("| Selection rule | Handling rule"))
+    assert "Mean score entered" in header and "Mean GCS" not in b
+    assert ("Mean score entered is the mean total the model received; with the eye-plus-motor sum (T), a "
+            "non-assessable examination enters as that sum (range, 2 to 10) and an assessable one as its total "
+            "(range, 3 to 15).") in b.split("Panel A.")[0]
+    assert "Mean GCS" in gen.blocks(supp)[9]      # eTable 9 panel B has no T rule and keeps its label
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md")
+def test_etable16_note_states_why_overall_calibration_is_close_to_ideal(gen, supp):
+    b = gen.blocks(supp)[16]
+    assert ("Over all audit stays, the observed-to-expected ratio is close to 1 for every rule, as expected for "
+            "parsimonious logistic models fit on large stratified folds; the subgroup rows are the informative "
+            "comparison.") in b
+    assert "reproduce the overall mortality" not in b
+
+
+@pytest.mark.requires_study_files("manuscript/supplement.md")
+def test_hand_edited_supplement_sentences(supp):
+    assert ("**Calibration.** Out-of-fold predictions from a parsimonious logistic model with an intercept, fit on "
+            "large folds stratified on in-hospital death, were expected to approximate the overall mortality, so "
+            "calibration over all stays was expected to be close to ideal for every rule; it did not distinguish "
+            "them.") in supp
+    assert ("The analysis code, including the scripts for cohort derivation, statistical analyses, sensitivity "
+            "analyses and figure generation, is available at "
+            "https://github.com/Alon-Gorenshtein/The_unexaminable_brain/releases/tag/jicm-r2.") in supp
+    assert "that reproduces every table and figure" not in supp
+    assert "was entered into the model specification in place of the total GCS" in supp
+    assert ("any invasive mechanical ventilation during the stay. A sensitivity analysis limited both treatment "
+            "covariates to exposures started no later than 24 hours after ICU admission (eTable 12, panel C).") in supp
+    s11 = supp.split("## S1.1")[1].split("## S1.2")[0].strip().split("\n\n")[1]
+    assert s11.endswith("formed the general-ICU comparator. Some codes are not specific to the labeled injury (notes "
+                        "to eTable 1), so the main estimates were repeated with specific codes only (eTable 2, "
+                        "panel C).")
+
+
+def test_readme_lists_77_before_digest():
+    text = (PROJ / "code" / "README.md").read_text(encoding="utf-8")
+    assert "77_definition_sensitivity.py" in text
+    assert text.index("77_definition_sensitivity.py") < text.index("72_revision_digest.py")
+    assert text.index("76_mortality_cv_by_patient.py") < text.index("77_definition_sensitivity.py")

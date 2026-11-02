@@ -67,3 +67,19 @@ def phenotype_masks(df):
         "anoxic": (is9 & c.str.startswith("3481")) | (is10 & c.str.startswith("G931"))
                   | (is9 & c.str.startswith("3485")) | (is10 & c.str.startswith("G9382")),
     }
+
+
+def specific_phenotype_masks(df):
+    """Sensitivity definition, same contract as `phenotype_masks`: SDH, AIS, TBI and anoxic keep only the codes
+    specific to the labeled injury (TBI: ICD-9 850 to 854, ICD-9 800, 801, 803 and 804 with a fourth digit other than
+    0 or 5, ICD-10 S06; SDH: ICD-9 432.1, ICD-10 I62.0; AIS: ICD-9 433.x1 and 434.x1, ICD-10 I63; anoxic: ICD-9 348.1,
+    ICD-10 G93.1); SAH and ICH are unchanged. Never wider than `phenotype_masks`."""
+    c, v = df["icd_code"], df["icd_version"]
+    is9, is10 = v == 9, v == 10
+    return {
+        **{ph: m for ph, m in phenotype_masks(df).items() if ph in ("SAH", "ICH")},
+        "SDH":    (is9 & c.str.startswith("4321")) | (is10 & c.str.startswith("I620")),
+        "AIS":    (is9 & c.str.match(r'^43[34]\d1$')) | (is10 & c.str.startswith("I63")),
+        "TBI":    (is9 & c.str.match(r"^(85[0-4]|(800|801|803|804)[12346789])")) | (is10 & c.str.startswith("S06")),
+        "anoxic": (is9 & c.str.startswith("3481")) | (is10 & c.str.startswith("G931")),
+    }
