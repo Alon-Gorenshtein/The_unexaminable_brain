@@ -316,10 +316,8 @@ def test_panel_c_values_match_definition_sensitivity(gen, supp):
     want = [("Stays with a verbal entry, n / ever non-assessable, %",
              lambda c: f"{gen.n_(d[f'{c}_analytic_n'])} / {gen.p1(d[f'{c}_ever_pct'])}")]
     want += [(f"{lab}, n / ever non-assessable, %", ever(k)) for k, lab in gen.PHENO]
-    want += [(f"{lab}, ventilated stays, median % of verbal examinations non-assessable",
-              (lambda k: lambda c: gen.p1(d[f"{c}_vent_frac_{k}_pct"]))(k)) for k, lab in gen.PHENO]
-    want += [("Anoxic, in-hospital mortality, %", lambda c: gen.p1(d[f"{c}_mortality_anoxic_pct"])),
-             ("Anoxic, ventilated, %", lambda c: gen.p1(d[f"{c}_vent_anoxic_pct"])),
+    want += [("Anoxic, ventilated stays, median % of verbal examinations non-assessable",
+              lambda c: gen.p1(d[f"{c}_vent_frac_anoxic_pct"])),
              ("Stays with an official first-day GCS, n / total of 15, %",
               lambda c: f"{gen.n_(d[f'{c}_official_n'])} / {gen.p1(d[f'{c}_official_15_pct'])}"),
              ("Official first-day GCS of 15 assigned by the default rule, n / eye-plus-motor sum below 10, %",
@@ -367,43 +365,6 @@ def test_etable2_panel_c_note_carries_the_removed_stays_and_the_comparator(gen, 
             "remaining codes.") in note
 
 
-@pytest.mark.requires_study_files("manuscript/supplement.md", "output/revision/definition_sensitivity.json")
-def test_etable12_panel_c_present(gen, supp):
-    d = _definition_sensitivity()
-    b = gen.blocks(supp)[12]
-    assert b.strip().startswith("**eTable 12. Sensitivity analyses of resampling, cross-validation folds and "
-                                "treatment-covariate timing.**")
-    cap = "Panel C. Treatment covariates recorded at any time during the ICU stay or by 24 hours after ICU admission"
-    text = _panel(b, cap)
-    assert text.splitlines()[0] == cap
-    header, rows, order = _rows(text)
-    assert header == ["Strategy", "AUROC, any time during the stay", "AUROC, first 24 hours",
-                      "Difference, first 24 hours minus any time"]
-    slugs = ["official", "reconstructed", "impute1", "gcs_t", "brennan"]
-    labels = ["Official first-day GCS", "Default-to-15", "Verbal imputed as 1", "Eye-plus-motor sum (T)",
-              "Brennan estimate"]
-    assert len(order) == 6
-    for s, lab in zip(slugs, labels):
-        a, f = d[f"primary_auroc_{s}"], d[f"firstday_auroc_{s}"]
-        assert rows[lab] == [gen.a3(a), gen.a3(f), gen.d4(f - a)], lab
-    last = "AUROC difference, Brennan estimate minus official first-day GCS"
-    assert order[-1] == last
-    assert rows[last] == [gen.a3(d["primary_diff_mean"]), gen.a3(d["firstday_diff_mean"]),
-                          gen.d4(d["firstday_diff_mean"] - d["primary_diff_mean"])]
-    note = text.split("\n\n")[-1]
-    assert (f"A vasopressor infusion was recorded in {gen.p1(d['stay_vaso_pct'])}% of stays at any time and "
-            f"{gen.p1(d['firstday_vaso_pct'])}% in the first 24 hours; mechanical ventilation in "
-            f"{gen.p1(d['stay_vent_pct'])}% and {gen.p1(d['firstday_vent_pct'])}%. An exposure counts in the first 24 "
-            "hours when it started no later than 24 hours after ICU admission, including one started before "
-            "admission.") in note
-    assert (f"{gen.a3(d['firstday_diff_mean'])} ({gen.a3(d['firstday_diff_lo'])} to "
-            f"{gen.a3(d['firstday_diff_hi'])})") in note
-    assert note.endswith("Exposures in the first 24 hours can still follow the selected examination: the earliest "
-                         f"exposure started after it in {gen.p1(d['firstday_vaso_after_exam_pct'])}% of stays with a "
-                         f"first-day vasopressor infusion and {gen.p1(d['firstday_vent_after_exam_pct'])}% of stays "
-                         "with first-day ventilation.")
-
-
 @pytest.mark.requires_study_files("manuscript/supplement.md")
 def test_etable1_note_names_every_nonspecific_code(gen, supp):
     b = gen.blocks(supp)[1]
@@ -423,21 +384,11 @@ def test_etable1_note_names_every_nonspecific_code(gen, supp):
 
 
 @pytest.mark.requires_study_files("manuscript/supplement.md")
-def test_etable2_title_and_etable18_caption(gen, supp):
-    assert gen.blocks(supp)[2].strip().startswith(
-        "**eTable 2. Diagnostic overlap among the acute brain-injury phenotypes and results under alternative "
-        "phenotype-assignment rules and code definitions.**")
-    cap = gen.blocks(supp)[18].split("\n\n")[0]
-    assert cap.endswith(" Phenotype labels use the primary code definition (eTable 1); eTable 2, panel C gives the "
-                        "percentages with specific codes.")
-
-
-@pytest.mark.requires_study_files("manuscript/supplement.md")
 def test_etable7_uses_mean_score_entered(gen, supp):
     b = gen.blocks(supp)[7]
     header = next(l for l in b.splitlines() if l.startswith("| Selection rule | Handling rule"))
     assert "Mean score entered" in header and "Mean GCS" not in b
-    assert ("Mean score entered is the mean total the model received; with the eye-plus-motor sum (T), a "
+    assert ("Mean score entered is the mean value of the GCS-derived predictor used in the model; with the eye-plus-motor sum (T), a "
             "non-assessable examination enters as that sum (range, 2 to 10) and an assessable one as its total "
             "(range, 3 to 15).") in b.split("Panel A.")[0]
     assert "Mean GCS" in gen.blocks(supp)[9]      # eTable 9 panel B has no T rule and keeps its label
@@ -463,8 +414,6 @@ def test_hand_edited_supplement_sentences(supp):
             "https://github.com/Alon-Gorenshtein/The_unexaminable_brain/releases/tag/jicm-r2.") in supp
     assert "that reproduces every table and figure" not in supp
     assert "was entered into the model specification in place of the total GCS" in supp
-    assert ("any invasive mechanical ventilation during the stay. A sensitivity analysis limited both treatment "
-            "covariates to exposures started no later than 24 hours after ICU admission (eTable 12, panel C).") in supp
     s11 = supp.split("## S1.1")[1].split("## S1.2")[0].strip().split("\n\n")[1]
     assert s11.endswith("formed the general-ICU comparator. Some codes are not specific to the labeled injury (notes "
                         "to eTable 1), so the main estimates were repeated with specific codes only (eTable 2, "

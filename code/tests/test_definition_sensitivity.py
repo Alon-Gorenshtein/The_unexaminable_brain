@@ -99,28 +99,3 @@ def test_removed_stays_by_icd_version_and_anoxic_characteristics():
     # eligible stays in ICD-9 = removed_icd9_n / pct, in ICD-10 = removed_icd10 / pct; together all eligible stays
     n9, n10 = j["removed_icd9_n"] / (j["removed_icd9_pct"] / 100), removed_icd10 / (j["removed_icd10_pct"] / 100)
     assert n9 + n10 == pytest.approx(j["primary_eligible_n"], abs=1)
-    for col in ("primary", "specific"):
-        assert 0 < j[f"{col}_mortality_anoxic_pct"] < 100 and 0 < j[f"{col}_vent_anoxic_pct"] < 100
-    # the primary column is the Table 1 Anoxic column (stays with a verbal entry)
-    assert round(j["primary_mortality_anoxic_pct"], 1) == 41.3
-    assert round(j["primary_vent_anoxic_pct"], 1) == 55.0
-    # keeping only stays with a specific anoxic code selects the sicker anoxic stays
-    assert j["specific_mortality_anoxic_pct"] > j["primary_mortality_anoxic_pct"]
-    assert j["specific_vent_anoxic_pct"] > j["primary_vent_anoxic_pct"]
-
-
-@pytest.mark.requires_study_files("output/revision/definition_sensitivity.json")
-def test_firstday_covariates_outputs():
-    # treatment exposure limited to the first 24 h is rarer than exposure at any time in the stay
-    j = json.loads((REV / "definition_sensitivity.json").read_text())
-    assert j["firstday_vaso_pct"] < j["stay_vaso_pct"] and j["firstday_vent_pct"] < j["stay_vent_pct"]
-    assert round(j["firstday_auroc_official"], 3) == 0.742
-    assert round(j["firstday_auroc_brennan"], 3) == 0.817
-
-
-@pytest.mark.requires_study_files("output/revision/definition_sensitivity.json")
-def test_first_day_exposures_that_follow_the_examination():
-    j = json.loads((REV / "definition_sensitivity.json").read_text())
-    assert 0 < j["firstday_vaso_after_exam_pct"] < 100 and 0 < j["firstday_vent_after_exam_pct"] < 100
-    assert round(j["firstday_vaso_after_exam_pct"], 1) == 30.3
-    assert round(j["firstday_vent_after_exam_pct"], 1) == 12.8

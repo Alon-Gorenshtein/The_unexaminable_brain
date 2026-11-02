@@ -91,22 +91,6 @@ def add_stay_covariates(w):
     return w
 
 
-def exposed_by(events, intime, hours=24):
-    """Stay ids with an event that starts within `hours` of ICU admission (events before admission count).
-    `events` has stay_id and starttime; `intime` is a Series indexed by stay_id; stays missing from it are ignored."""
-    t = events["stay_id"].map(intime)
-    return set(events.loc[events["starttime"] <= t + pd.Timedelta(hours=hours), "stay_id"])
-
-
-def pct_exposed_after_exam(events, intime, exam_time, hours=24):
-    """Of the stays in `exam_time` (Series of the selected examination's charttime, indexed by stay_id) with an event
-    that starts within `hours` of ICU admission (see `exposed_by`), the percentage whose earliest event started after
-    that examination."""
-    exposed = exposed_by(events, intime, hours) & set(exam_time.index)
-    first = events.loc[events["stay_id"].isin(exposed)].groupby("stay_id")["starttime"].min()
-    return 100 * float((first > exam_time.loc[first.index]).mean())
-
-
 def add_totals(w):
     w = w.copy()
     na = w["nonassess"].values.astype(bool)
@@ -160,15 +144,6 @@ def boot_auc_diff(y, pa, pb, B=BOOT_B, seed=BOOT_SEED):
             continue
         out.append(roc_auc_score(y[s], pa[s]) - roc_auc_score(y[s], pb[s]))
     return (float(np.mean(out)), *np.percentile(out, [2.5, 97.5]))
-
-
-def auroc_difference_bounds(diff, deaths_in, survivors_in, deaths_out, survivors_out):
-    """Worst-case range of an AUROC difference once stays outside the audit are pooled in. The pooled AUROC is
-    w * AUROC_in + (1 - w) * AUROC_new, w the share of death-survivor pairs lying wholly inside the audit and
-    AUROC_new the concordant share of the rest, anywhere in [0, 1]; so the difference moves by at most 1 - w.
-    Returns (lo, hi, 1 - w)."""
-    w = deaths_in * survivors_in / ((deaths_in + deaths_out) * (survivors_in + survivors_out))
-    return w * diff - (1 - w), w * diff + (1 - w), 1 - w
 
 
 def calib_slope(y, p):

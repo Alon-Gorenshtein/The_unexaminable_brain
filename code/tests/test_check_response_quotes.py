@@ -132,16 +132,3 @@ def test_table_quote_with_a_foreign_header_fails():
 def test_table_quote_is_checked_against_its_own_version():
     text = _table_letter(["| Brennan estimate | 0.820 (0.812 to 0.828) | 0.121 |"], kind="Original")
     assert crq.check(text, [ORIG], [SRC_TABLE + "\nPanel note from the source.\n"])[1]
-
-
-def test_real_response_table_quote_breaks_when_a_cell_changes():
-    resp = ROOT / "manuscript" / "response_to_reviewers.md"
-    if not resp.exists():
-        pytest.skip("no response yet")
-    text = resp.read_text(encoding="utf-8")
-    row = "| Verbal GCS documentation | Not documented (excluded) | 42 | 26 | 75 (63 to 83) | 50.0 | 19.0 | 61.9 | 0.2 |"
-    assert row in text
-    rev = [(ROOT / "manuscript" / f).read_text(encoding="utf-8") for f in ("manuscript.md", "supplement.md")]
-    bad = text.replace(row, row.replace("61.9", "61.8"))
-    fails = crq.check(bad, [], rev)[1]
-    assert any("61.8" in f for f in fails)

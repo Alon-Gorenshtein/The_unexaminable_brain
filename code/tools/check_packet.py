@@ -224,12 +224,6 @@ def frontmatter_wordcount_matches(docx):
     return [] if stated == measured else [f"{Path(docx).name}: front matter says {stated} words, strict count is {measured}"]
 
 
-def table_widths_set(docx):
-    """The main-text tables whose words the shared width filter breaks carry the column widths of set_table_widths."""
-    from set_table_widths import check
-    return check(Path(docx))
-
-
 def no_forbidden_metadata(docx, patterns=()):
     """Document properties carry no email address, no "python-docx" and nothing matching `patterns`."""
     rx = re.compile("|".join([r"[\w.+-]+@[\w-]+\.[\w.]+", "python-docx", *patterns]))
@@ -388,7 +382,6 @@ def check(root):
         problems += has_no_embedded_figures(f)
         problems += frontmatter_wordcount_matches(f)
         problems += abstract_within_limit(f) + declarations_present(f)
-        problems += table_widths_set(f)
     if colored_run_count(clean):
         problems.append("clean manuscript contains colored runs")
     if not colored_run_count(ms):

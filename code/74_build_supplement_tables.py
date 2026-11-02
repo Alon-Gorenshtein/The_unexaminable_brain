@@ -130,10 +130,8 @@ def _specific_rows(ds):
                  lambda c: f"{n_(ds[f'{c}_analytic_n'])} / {p1(ds[f'{c}_ever_pct'])}")]
     rows += [both(f"{lab}, n / ever non-assessable, %",
                   lambda c, k=k: f"{n_(ds[f'{c}_ever_{k}_n'])} / {p1(ds[f'{c}_ever_{k}_pct'])}") for k, lab in PHENO]
-    rows += [both(f"{lab}, ventilated stays, median % of verbal examinations non-assessable",
-                  lambda c, k=k: p1(ds[f"{c}_vent_frac_{k}_pct"])) for k, lab in PHENO]
-    rows += [both("Anoxic, in-hospital mortality, %", lambda c: p1(ds[f"{c}_mortality_anoxic_pct"])),
-             both("Anoxic, ventilated, %", lambda c: p1(ds[f"{c}_vent_anoxic_pct"])),
+    rows += [both("Anoxic, ventilated stays, median % of verbal examinations non-assessable",
+                  lambda c: p1(ds[f"{c}_vent_frac_anoxic_pct"])),
              both("Stays with an official first-day GCS, n / total of 15, %",
                   lambda c: f"{n_(ds[f'{c}_official_n'])} / {p1(ds[f'{c}_official_15_pct'])}"),
              both("Official first-day GCS of 15 assigned by the default rule, n / eye-plus-motor sum below 10, %",
@@ -176,7 +174,7 @@ def t_overlap():
     first = tot["first_listed_dx"]
     return block(
         "**eTable 2. Diagnostic overlap among the acute brain-injury phenotypes and results under alternative "
-        "phenotype-assignment rules and code definitions.**",
+        "phenotype-assignment rules.**",
         f"Panel A. Stays with codes for each pair of phenotypes, before the hierarchy (n = {n_(ca['overlap_total_n'])} "
         "stays). The diagonal gives the stays with any code for that phenotype.",
         table(["Phenotype"] + [lab for _, lab in PHENO], a_rows),
@@ -308,7 +306,7 @@ def t_rules():
         "between ICU admission and 24 hours. The official first-day GCS is a first-day minimum that does not depend "
         "on the examination selected, so it is shown with the primary rule and the carry-forward variant only. AUROC "
         f"is out-of-fold with a 95% CI from {BOOT} stay-level bootstrap resamples. Mean score entered is the mean "
-        "total the model received; with the eye-plus-motor sum (T), a non-assessable examination enters as that sum "
+        "value of the GCS-derived predictor used in the model; with the eye-plus-motor sum (T), a non-assessable examination enters as that sum "
         "(range, 2 to 10) and an assessable one as its total (range, 3 to 15).",
         "Panel A. Mortality model",
         table(["Selection rule", "Handling rule", "Stays, n", "Deaths, n", "Mortality, %", "AUROC (95% CI)", "Brier",
@@ -447,13 +445,8 @@ def t_cluster():
     stay_pt, pat_pt = m["brennan_minus_official_stay_folds"], m["brennan_minus_official_patient_folds"]
     b_rows.append(["AUROC difference, Brennan estimate minus official first-day GCS", a3(stay_pt), a3(pat_pt),
                    d4(pat_pt - stay_pt)])
-    ds = jload("definition_sensitivity.json")
-    c_rows = [[STRATEGY[k], a3(ds[f"primary_auroc_{k}"]), a3(ds[f"firstday_auroc_{k}"]),
-               d4(ds[f"firstday_auroc_{k}"] - ds[f"primary_auroc_{k}"])] for k in SLUGS]
-    c_rows.append(["AUROC difference, Brennan estimate minus official first-day GCS", a3(ds["primary_diff_mean"]),
-                   a3(ds["firstday_diff_mean"]), d4(ds["firstday_diff_mean"] - ds["primary_diff_mean"])])
     return block(
-        "**eTable 12. Sensitivity analyses of resampling, cross-validation folds and treatment-covariate timing.** "
+        "**eTable 12. Sensitivity analyses that treat the patient as the unit: resampling and cross-validation folds.** "
         f"The cohort is the first ICU stay of each hospitalization: {n_(c['n_stays_total'])} stays from "
         f"{n_(c['n_subjects_total'])} patients, of whom {n_(c['n_subjects_with_multiple_stays'])} contributed more than "
         f"one stay. The audit subset comprises {n_(c['audit_n_stays'])} stays from {n_(c['audit_n_subjects'])} "
@@ -473,21 +466,7 @@ def t_cluster():
         f"more than one stay. With folds assigned by ICU stay, {n_(m['patients_in_multiple_folds_stay_folds'])} of "
         "them had stays in more than one fold; with folds assigned by patient, none did, and each fold held between "
         f"{p1(m['patient_fold_pct_min'])}% and {p1(m['patient_fold_pct_max'])}% of the stays. Assigning the folds by "
-        f"patient changed no AUROC by more than {d4(m['max_abs_diff'])}.",
-        "Panel C. Treatment covariates recorded at any time during the ICU stay or by 24 hours after ICU admission",
-        table(["Strategy", "AUROC, any time during the stay", "AUROC, first 24 hours",
-               "Difference, first 24 hours minus any time"], c_rows),
-        f"A vasopressor infusion was recorded in {p1(ds['stay_vaso_pct'])}% of stays at any time and "
-        f"{p1(ds['firstday_vaso_pct'])}% in the first 24 hours; mechanical ventilation in {p1(ds['stay_vent_pct'])}% "
-        f"and {p1(ds['firstday_vent_pct'])}%. An exposure counts in the first 24 hours when it started no later than "
-        "24 hours after ICU admission, including one started before admission. Both columns use the "
-        f"{n_(ds['primary_audit_n'])} audit stays. Paired AUROC difference, Brennan estimate minus official "
-        "first-day GCS, with both exposures limited to the first 24 hours (95% CI): "
-        f"{est_ci(ds['firstday_diff_mean'], ds['firstday_diff_lo'], ds['firstday_diff_hi'], a3)}, from {BOOT} "
-        "stay-level bootstrap resamples. Exposures in the first 24 hours can still follow the selected examination: "
-        f"the earliest exposure started after it in {p1(ds['firstday_vaso_after_exam_pct'])}% of stays with a "
-        f"first-day vasopressor infusion and {p1(ds['firstday_vent_after_exam_pct'])}% of stays with first-day "
-        "ventilation.")
+        f"patient changed no AUROC by more than {d4(m['max_abs_diff'])}.")
 
 
 def _wilson(t, grp, win, stat):
@@ -702,8 +681,7 @@ def t_pheno_or():
     return block(
         "**eTable 18. Adjusted odds ratios of ever having a non-assessable verbal examination, by phenotype.** "
         "Logistic regression adjusted for age and sex; acute ischemic stroke is the reference; first ICU stay of each "
-        f"hospitalization (n = {n_(ca['with_verbal_n'])} stays). " + ABBR + " Phenotype labels use the primary code "
-        "definition (eTable 1); eTable 2, panel C gives the percentages with specific codes.",
+        f"hospitalization (n = {n_(ca['with_verbal_n'])} stays). " + ABBR,
         table(["Phenotype (reference: acute ischemic stroke)", "Adjusted odds ratio (95% CI)"], rows))
 
 

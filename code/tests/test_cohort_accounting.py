@@ -100,14 +100,3 @@ def test_complete_case_share_with_outside_stays(ca, audit):
     v = 100 * (audit["sel_deaths_excluded"] + ca["outside_deaths_n"]) / (audit["sel_deaths_total"] + ca["outside_deaths_n"])
     assert ca["cc_pct_deaths_excluded_with_outside"] == pytest.approx(v)
     assert ca["cc_pct_deaths_excluded_with_outside"] > audit["sel_pct_deaths_excluded"]
-
-
-@pytest.mark.requires_study_files(*OUTSIDE_FILES)
-def test_accounting_bound_values(ca, audit):
-    assert round(ca["outside_pair_share_pct"], 1) == 1.9
-    assert round(ca["auroc_diff_bound_lo"], 3) == 0.050
-    assert round(ca["auroc_diff_bound_hi"], 3) == 0.088
-    d = audit["brennan_lowest_em_auroc"] - audit["official_lowest_em_auroc"]
-    w = 1 - ca["outside_pair_share_pct"] / 100
-    assert ca["auroc_diff_bound_lo"] == pytest.approx(w * d - (1 - w))
-    assert ca["auroc_diff_bound_hi"] == pytest.approx(w * d + (1 - w))

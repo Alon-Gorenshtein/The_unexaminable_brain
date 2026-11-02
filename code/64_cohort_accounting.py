@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.stats import spearmanr
 
 from config import HOSP, INT, PHENOTYPE_PRIORITY, REV
-from lib_audit import auroc_difference_bounds, load_first_day
+from lib_audit import load_first_day
 from lib_cohort import NEURO, assign_hier, phenotype_flags, primary_dx_label
 
 c = pd.read_parquet(INT / "cohort.parquet")
@@ -67,12 +67,6 @@ out["ever_nonassess_n"] = int(nb.ever_nonassess.sum())
 # the 42 stays without a verbal entry counted as none, or all, non-assessable
 out["burden_bound_lo_pct"] = float(100 * out["ever_nonassess_n"] / len(neuro))
 out["burden_bound_hi_pct"] = float(100 * (out["ever_nonassess_n"] + out["no_verbal_n"]) / len(neuro))
-# worst case for the Brennan-minus-official AUROC difference if the outside stays were pooled in: they add
-# death-survivor pairs, and a score can rank all of those pairs rightly or wrongly
-lo, hi, share = auroc_difference_bounds(aud["brennan_lowest_em_auroc"] - aud["official_lowest_em_auroc"],
-                                        aud["sel_deaths_total"], aud["sel_n_total"] - aud["sel_deaths_total"],
-                                        out["outside_deaths_n"], out["outside_n"] - out["outside_deaths_n"])
-out.update(outside_pair_share_pct=float(100 * share), auroc_diff_bound_lo=float(lo), auroc_diff_bound_hi=float(hi))
 # complete-case handling would also exclude every outside stay, since none has a complete first-day examination
 out["cc_pct_deaths_excluded_with_outside"] = float(100 * (aud["sel_deaths_excluded"] + out["outside_deaths_n"])
                                                    / (aud["sel_deaths_total"] + out["outside_deaths_n"]))
